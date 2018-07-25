@@ -23,14 +23,14 @@
 bool Lexer::Error(const string& message, string* err) {
   // Compute line/column.
   int line = 1;
-  const char* context = input_.str_;
+  const char* line_start = input_.str_;
   for (const char* p = input_.str_; p < last_token_; ++p) {
     if (*p == '\n') {
       ++line;
-      context = p + 1;
+      line_start = p + 1;
     }
   }
-  int col = last_token_ ? (int)(last_token_ - context) : 0;
+  int col = last_token_ ? (int)(last_token_ - line_start) : 0;
 
   char buf[1024];
   snprintf(buf, sizeof(buf), "%s:%d: ", filename_.AsString().c_str(), line);
@@ -43,12 +43,12 @@ bool Lexer::Error(const string& message, string* err) {
     int len;
     bool truncated = true;
     for (len = 0; len < kTruncateColumn; ++len) {
-      if (context[len] == 0 || context[len] == '\n') {
+      if (line_start[len] == 0 || line_start[len] == '\n') {
         truncated = false;
         break;
       }
     }
-    *err += string(context, len);
+    *err += string(line_start, len);
     if (truncated)
       *err += "...";
     *err += "\n";
@@ -537,8 +537,9 @@ yy92:
 
 bool Lexer::ReadIdent(string* out) {
   const char* p = ofs_;
+  const char* start;
   for (;;) {
-    const char* start = p;
+    start = p;
     
 {
 	unsigned char yych;
@@ -604,7 +605,10 @@ yy96:
     }
 yy97:
 	++p;
-	{ return false; }
+	{
+      last_token_ = start;
+      return false;
+    }
 yy99:
 	++p;
 	yych = *p;
@@ -616,6 +620,7 @@ yy100:
 }
 
   }
+  last_token_ = start;
   ofs_ = p;
   EatWhitespace();
   return true;
